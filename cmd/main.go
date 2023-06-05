@@ -6,69 +6,119 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	socketio "github.com/googollee/go-socket.io"
+	"github.com/gorilla/websocket"
 )
 
 type Room struct {
-	Title        string `json:"title"`
-	Nickname     string `json:"nickname"`
-	MaxUsers     int    `json:"maxUsers"`
-	CurrentUsers int    `json:"currentUsers"`
+	ID       string
+	Clients  map[*websocket.Conn]bool
+	Messages []string
 }
 
-var rooms []Room
+func (r *Room) Broadcast(message string) {
+	r.Messages = append(r.Messages, message)
+	for client := range r.Clients {
+		err := client.WriteMessage(websocket.TextMessage, []byte(message))
+		if err != nil {
+			log.Println("Failed to send message to client:", err)
+			client.Close()
+			delete(r.Clients, client)
+		}
+	}
+}
+
+// func (r *Room) Broadcast(message string) {
+// 	r.Messages = append(r.Messages, message)
+
+// 	userCount := len(r.Clients)
+
+// 	for client := range r.Clients {
+// 		err := client.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("message:%s,userCount:%d", message, userCount)))
+// 		if err != nil {
+// 			log.Println("Failed to send message to client:", err)
+// 			client.Close()
+// 			delete(r.Clients, client)
+// 		}
+// 	}
+// }
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
 
 func main() {
 	router := gin.Default()
 	router.Use(cors.Default())
 
-	server := socketio.NewServer(nil)
+	rooms := make(map[string]*Room)
+	roomIDs := []string{"room1", "room2"}
+	for _, id := range roomIDs {
+		rooms[id] = &Room{
+			ID:       id,
+			Clients:  make(map[*websocket.Conn]bool),
+			Messages: []string{},
+		}
+	}
 
-	// Socket.IO 이벤트 핸들러 등록
-	server.OnConnect("/", func(s socketio.Conn) error {
-		log.Println("Socket.IO client connected:", s.ID())
-		return nil
-	})
-
-	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
-		log.Println("Socket.IO client disconnected:", s.ID())
-	})
-
-	// 방 추가 API 핸들러 등록
-	router.POST("/rooms", func(c *gin.Context) {
-		var newRoom Room
-		if err := c.ShouldBindJSON(&newRoom); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	router.GET("/ws/:roomID", func(c *gin.Context) {
+		roomID := c.Param("roomID")
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Println("Failed to upgrade connection:", err)
 			return
 		}
 
-		// 방 추가 로직
-		rooms = append(rooms, newRoom)
+		room, exists := rooms[roomID]
+		if !exists {
+			log.Println("Invalid room:", roomID)
+			conn.Close()
+			return
+		}
 
-		// 실시간으로 rooms 정보 업데이트
-		server.BroadcastToRoom("/", "chat", "rooms", rooms)
+		if len(room.Clients) >= 2 {
+			log.Println("Room is full")
+			conn.Close()
+			return
+		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Room created successfully"})
+		room.Clients[conn] = true
+
+		for _, message := range room.Messages {
+			err := conn.WriteMessage(websocket.TextMessage, []byte(message))
+			if err != nil {
+				log.Println("Failed to send message to client:", err)
+				conn.Close()
+				delete(room.Clients, conn)
+				return
+			}
+		}
+
+		go func() {
+			for {
+				_, msg, err := conn.ReadMessage()
+				if err != nil {
+					log.Println("Failed to read message from client:", err)
+					conn.Close()
+					delete(room.Clients, conn)
+					return
+				}
+				room.Broadcast(string(msg))
+			}
+		}()
 	})
 
-	// Socket.IO 엔드포인트 등록
-	server.OnEvent("/", "chat", func(s socketio.Conn, msg string) {
-		log.Println("Received chat message:", msg)
+	router.GET("/api/rooms/:roomID/users", func(c *gin.Context) {
+		roomID := c.Param("roomID")
+
+		room, exists := rooms[roomID]
+		if !exists {
+			log.Println("Invalid room:", roomID)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid room"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"count": len(room.Clients)})
 	})
-
-	go server.Serve()
-	defer server.Close()
-
-	// 프론트엔드에서 Socket.IO 클라이언트 스크립트 로드
-	router.Static("/socket.io-client/", "./node_modules/socket.io-client/dist/")
-	router.StaticFile("/", "index.html")
-
-	router.NoRoute(func(c *gin.Context) {
-		http.ServeFile(c.Writer, c.Request, "index.html")
-	})
-
-	router.GET("/socket.io/*any", gin.WrapH(server))
-	router.POST("/socket.io/*any", gin.WrapH(server))
 
 	router.Run(":8080")
 }
