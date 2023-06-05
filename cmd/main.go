@@ -3,112 +3,72 @@ package main
 import (
 	"log"
 	"net/http"
-	"sync"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	socketio "github.com/googollee/go-socket.io"
 )
 
-type ChatRoom struct {
-	Name     string
-	MaxUsers int
-	Users    []string
+type Room struct {
+	Title        string `json:"title"`
+	Nickname     string `json:"nickname"`
+	MaxUsers     int    `json:"maxUsers"`
+	CurrentUsers int    `json:"currentUsers"`
 }
 
-type ChatApp struct {
-	Rooms     map[string]*ChatRoom
-	RoomsLock sync.Mutex
-}
+var rooms []Room
 
 func main() {
-	app := &ChatApp{
-		Rooms: make(map[string]*ChatRoom),
-	}
-
 	router := gin.Default()
+	router.Use(cors.Default())
 
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000"} // 클라이언트의 도메인 주소
-	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type"}
-	router.Use(cors.New(config))
+	server := socketio.NewServer(nil)
 
-	router.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "Welcome to the chat app!")
+	// Socket.IO 이벤트 핸들러 등록
+	server.OnConnect("/", func(s socketio.Conn) error {
+		log.Println("Socket.IO client connected:", s.ID())
+		return nil
 	})
 
-	router.GET("/rooms", func(c *gin.Context) {
-		app.RoomsLock.Lock()
-		defer app.RoomsLock.Unlock()
-
-		roomNames := make([]string, 0, len(app.Rooms))
-		for roomName := range app.Rooms {
-			roomNames = append(roomNames, roomName)
-		}
-
-		c.JSON(http.StatusOK, roomNames)
-
+	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
+		log.Println("Socket.IO client disconnected:", s.ID())
 	})
 
-	router.GET("/join/:roomName", func(c *gin.Context) {
-		roomName := c.Param("roomName")
-		c.String(http.StatusOK, "Joined as: %s", roomName)
-
-		// 방 참여 동작 구현
-		// roomName := "My Room" // 예시로 고정된 방 이름 사용
-		app.RoomsLock.Lock()
-		defer app.RoomsLock.Unlock()
-
-		if room, ok := app.Rooms[roomName]; ok {
-			room.Users = append(room.Users, roomName)
-			c.String(http.StatusOK, "Joined room: %s", roomName)
-		} else {
-			c.String(http.StatusBadRequest, "Room not found")
-		}
-	})
-
-	router.POST("/create-room", func(c *gin.Context) {
-		var json struct {
-			Name     string `json:"name"`
-			MaxUsers int    `json:"max_users"`
-		}
-
-		if err := c.ShouldBindJSON(&json); err != nil {
-			c.String(http.StatusBadRequest, "Invalid request")
+	// 방 추가 API 핸들러 등록
+	router.POST("/rooms", func(c *gin.Context) {
+		var newRoom Room
+		if err := c.ShouldBindJSON(&newRoom); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		app.RoomsLock.Lock()
-		defer app.RoomsLock.Unlock()
+		// 방 추가 로직
+		rooms = append(rooms, newRoom)
 
-		if _, ok := app.Rooms[json.Name]; ok {
-			c.String(http.StatusBadRequest, "Room already exists")
-			return
-		}
+		// 실시간으로 rooms 정보 업데이트
+		server.BroadcastToRoom("/", "chat", "rooms", rooms)
 
-		room := &ChatRoom{
-			Name:     json.Name,
-			MaxUsers: json.MaxUsers,
-			Users:    []string{},
-		}
-
-		app.Rooms[json.Name] = room
-
-		c.String(http.StatusOK, "Room created: %s", json.Name)
+		c.JSON(http.StatusOK, gin.H{"message": "Room created successfully"})
 	})
 
-	router.POST("/delete-room/:roomName", func(c *gin.Context) {
-		roomName := c.Param("roomName")
-
-		app.RoomsLock.Lock()
-		defer app.RoomsLock.Unlock()
-
-		if _, ok := app.Rooms[roomName]; ok {
-			delete(app.Rooms, roomName)
-			c.String(http.StatusOK, "Room deleted: %s", roomName)
-		} else {
-			c.String(http.StatusBadRequest, "Room not found")
-		}
+	// Socket.IO 엔드포인트 등록
+	server.OnEvent("/", "chat", func(s socketio.Conn, msg string) {
+		log.Println("Received chat message:", msg)
 	})
 
-	log.Fatal(router.Run(":8080"))
+	go server.Serve()
+	defer server.Close()
+
+	// 프론트엔드에서 Socket.IO 클라이언트 스크립트 로드
+	router.Static("/socket.io-client/", "./node_modules/socket.io-client/dist/")
+	router.StaticFile("/", "index.html")
+
+	router.NoRoute(func(c *gin.Context) {
+		http.ServeFile(c.Writer, c.Request, "index.html")
+	})
+
+	router.GET("/socket.io/*any", gin.WrapH(server))
+	router.POST("/socket.io/*any", gin.WrapH(server))
+
+	router.Run(":8080")
 }
