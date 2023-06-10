@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/sinde530/go-mancer/cmd/handler"
 )
 
 func main() {
@@ -29,6 +30,7 @@ func main() {
 	}
 
 	r.GET("/", HandleTest)
+	r.POST("/account/register", handler.HandleRegister)
 
 	port := os.Getenv("PORT")
 	log.Fatal(r.Run(":" + port))
