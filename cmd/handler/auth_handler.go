@@ -7,18 +7,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sinde530/go-mancer/db"
+	"github.com/sinde530/go-mancer/model"
 )
 
-type registerRequest struct {
-	UID      string `json:"uid"`        // user ID
-	Email    string `json:"email"`      // unique
-	Username string `json:"username"`   // Min 7, max 30 characters.
-	Password string `json:"password"`   // Min 6, max 150 characters.
-	CreateAT string `json:"created_at"` // Date Created
-}
-
 func HandleRegister(c *gin.Context) {
-	var request registerRequest
+	var request model.RegisterRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		log.Println("Failed to parse request:", err)
@@ -38,6 +32,11 @@ func HandleRegister(c *gin.Context) {
 	t := time.Now()
 	request.CreateAT = t.Format("2006-01-02 15:04:05")
 	fmt.Println("Password: ", request.CreateAT)
+
+	err := db.SaveUser(&request)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save user"})
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Register Successful"})
 }
