@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/sinde530/go-mancer/model"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -50,8 +51,26 @@ func init() {
 	Collection = Client.Database("chattings").Collection("users")
 }
 
+func CheckUser(email string) error {
+	var result model.RegisterRequest
+	err := Collection.FindOne(context.Background(),
+		bson.M{"email": email}).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil
+		}
+		return err
+	}
+	return fmt.Errorf("Email already exists")
+}
+
 func SaveUser(request *model.RegisterRequest) error {
-	_, err := Collection.InsertOne(context.Background(), request)
+	err := CheckUser(request.Email)
+	if err != nil {
+		return err
+	}
+
+	_, err = Collection.InsertOne(context.Background(), request)
 	if err != nil {
 		return err
 	}
