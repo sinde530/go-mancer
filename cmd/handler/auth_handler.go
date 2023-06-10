@@ -35,7 +35,12 @@ func HandleRegister(c *gin.Context) {
 
 	err := db.SaveUser(&request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save user"})
+		if err.Error() == "Email already exists" {
+			c.JSON(http.StatusConflict, gin.H{"error": "이메일이 있습니다. 다른 이메일 또는 비밀번호 찾기를 해주세요."})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save user"})
+		}
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Register Successful"})
