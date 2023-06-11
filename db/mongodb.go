@@ -63,7 +63,7 @@ func CheckUser(email string) error {
 		}
 		return err
 	}
-	return fmt.Errorf("Email already exists")
+	return fmt.Errorf("email already exists")
 }
 
 func SaveUser(request *model.User) error {
