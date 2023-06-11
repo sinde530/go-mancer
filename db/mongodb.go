@@ -85,7 +85,7 @@ func GetUserByEmail(email string) (*model.User, error) {
 
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("User not found")
+			return nil, fmt.Errorf("user not found")
 		}
 		return nil, err
 	}
@@ -96,12 +96,12 @@ func GetUserByEmail(email string) (*model.User, error) {
 func AuthenticateUser(email, password string) (*model.User, error) {
 	user, err := GetUserByEmail(email)
 	if err != nil {
-		return nil, errors.New("User not found")
+		return nil, errors.New("user not found")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return nil, errors.New("User not found")
+		return nil, errors.New("user not found")
 	}
 
 	return user, nil
