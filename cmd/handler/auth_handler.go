@@ -33,6 +33,10 @@ func HandleRegister(c *gin.Context) {
 	request.CreateAT = t.Format("2006-01-02 15:04:05")
 	fmt.Println("Password: ", request.CreateAT)
 
+	// Set default image
+	defaultImage := "assets/imgs/default-image.png"
+	request.Image = defaultImage
+
 	err := db.SaveUser(&request)
 	if err != nil {
 		if err.Error() == "Email already exists" {
@@ -43,5 +47,11 @@ func HandleRegister(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Register Successful"})
+	user, err := db.GetUserByEmail(request.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, user)
 }

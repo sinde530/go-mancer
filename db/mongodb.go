@@ -76,3 +76,16 @@ func SaveUser(request *model.RegisterRequest) error {
 	}
 	return nil
 }
+
+func GetUserByEmail(email string) (*model.RegisterRequest, error) {
+	var result model.RegisterRequest
+	err := Collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("User not found")
+		}
+		return nil, err
+	}
+	return &result, nil
+}
