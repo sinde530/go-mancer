@@ -12,11 +12,11 @@ var jwtKey = []byte("your-secret-key")
 
 // Email string `json:"email"`
 type Claims struct {
-	User *model.RegisterRequest `json:"user"`
+	User *model.User `json:"user"`
 	jwt.StandardClaims
 }
 
-func GenerateTokens(user *model.RegisterRequest) (*model.Tokens, error) {
+func GenerateTokens(user *model.User) (*model.Tokens, error) {
 	// Create the JWT claims, which includes the user email and expiry time
 	claims := &Claims{
 		User: user,

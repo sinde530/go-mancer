@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var Client *mongo.Client
@@ -64,7 +66,7 @@ func CheckUser(email string) error {
 	return fmt.Errorf("Email already exists")
 }
 
-func SaveUser(request *model.RegisterRequest) error {
+func SaveUser(request *model.User) error {
 	err := CheckUser(request.Email)
 	if err != nil {
 		return err
@@ -77,9 +79,9 @@ func SaveUser(request *model.RegisterRequest) error {
 	return nil
 }
 
-func GetUserByEmail(email string) (*model.RegisterRequest, error) {
-	var result model.RegisterRequest
-	err := Collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&result)
+func GetUserByEmail(email string) (*model.User, error) {
+	var user model.User
+	err := Collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
 
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -87,5 +89,20 @@ func GetUserByEmail(email string) (*model.RegisterRequest, error) {
 		}
 		return nil, err
 	}
-	return &result, nil
+	return &user, nil
+}
+
+// AuthenticateUser ...
+func AuthenticateUser(email, password string) (*model.User, error) {
+	user, err := GetUserByEmail(email)
+	if err != nil {
+		return nil, errors.New("User not found")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil {
+		return nil, errors.New("User not found")
+	}
+
+	return user, nil
 }
