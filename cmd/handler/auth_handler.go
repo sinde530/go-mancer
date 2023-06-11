@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sinde530/go-mancer/cmd/token"
 	"github.com/sinde530/go-mancer/db"
 	"github.com/sinde530/go-mancer/model"
 )
@@ -53,5 +54,13 @@ func HandleRegister(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, user)
+	tokens, err := token.GenerateTokens(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
+		return
+	}
+
+	// c.JSON(http.StatusCreated, user)
+	// c.JSON(http.StatusCreated, gin.H{"user": user, "tokens": tokens})
+	c.JSON(http.StatusCreated, gin.H{"tokens": tokens})
 }
