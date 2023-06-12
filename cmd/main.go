@@ -31,6 +31,7 @@ func main() {
 
 	r.GET("/", HandleTest)
 	r.POST("/account/register", handler.HandleRegister)
+	r.POST("/account/login", handler.HandleLogin)
 
 	port := os.Getenv("PORT")
 	log.Fatal(r.Run(":" + port))

@@ -96,12 +96,16 @@ func GetUserByEmail(email string) (*model.User, error) {
 func AuthenticateUser(email, password string) (*model.User, error) {
 	user, err := GetUserByEmail(email)
 	if err != nil {
-		return nil, errors.New("user not found")
+		if err.Error() == "user not found" {
+
+			return nil, errors.New("user not found")
+		}
+		return nil, err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return nil, errors.New("user not found")
+		return nil, errors.New("incorrect email or password")
 	}
 
 	return user, nil

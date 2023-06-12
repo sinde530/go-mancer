@@ -36,23 +36,23 @@ func GenerateTokens(user *model.User) (*model.Tokens, error) {
 	}
 
 	// do the same for refreshToken
-	refreshClaims := &Claims{
-		User: user,
-		StandardClaims: jwt.StandardClaims{
-			// refresh token is typically longer lived
-			ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
-		},
-	}
+	// refreshClaims := &Claims{
+	// 	User: user,
+	// 	StandardClaims: jwt.StandardClaims{
+	// 		// refresh token is typically longer lived
+	// 		ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
+	// 	},
+	// }
 
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	ssRefresh, err := refreshToken.SignedString(jwtKey)
+	// refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	// ssRefresh, err := refreshToken.SignedString(jwtKey)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.Tokens{
-		AccessToken:  ss,
-		RefreshToken: ssRefresh,
+		AccessToken: ss,
+		// RefreshToken: ssRefresh,
 	}, nil
 }
