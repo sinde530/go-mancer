@@ -2,6 +2,7 @@ package token
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -25,7 +26,7 @@ func GenerateTokens(user *model.User) (*model.Tokens, error) {
 		User: user,
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
-			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
+			ExpiresAt: time.Now().Add(7 * time.Minute).Unix(),
 		},
 	}
 
@@ -39,24 +40,24 @@ func GenerateTokens(user *model.User) (*model.Tokens, error) {
 	}
 
 	// do the same for refreshToken
-	// refreshClaims := &Claims{
-	// 	User: user,
-	// 	StandardClaims: jwt.StandardClaims{
-	// 		// refresh token is typically longer lived
-	// 		ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
-	// 	},
-	// }
+	refreshClaims := &Claims{
+		User: user,
+		StandardClaims: jwt.StandardClaims{
+			// refresh token is typically longer lived
+			ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
+		},
+	}
 
-	// refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	// ssRefresh, err := refreshToken.SignedString(jwtKey)
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	ssRefresh, err := refreshToken.SignedString(jwtKey)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &model.Tokens{
-		AccessToken: ss,
-		// RefreshToken: ssRefresh,
+		AccessToken:  ss,
+		RefreshToken: ssRefresh,
 	}, nil
 }
 
@@ -83,4 +84,22 @@ func VerifyToken(c *gin.Context) (*jwt.Token, *Claims, error) {
 	}
 
 	return token, claims, nil
+}
+
+func TokenChange(c *gin.Context) {
+	// We need to parse the Refresh Token from Authorization Header
+	_, claims, err := VerifyToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+		return
+	}
+
+	// If the Refresh Token is valid, generate a new Access Token
+	newTokens, err := GenerateTokens(claims.User)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"tokens": newTokens})
 }

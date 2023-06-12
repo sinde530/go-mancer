@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/sinde530/go-mancer/cmd/handler"
+	"github.com/sinde530/go-mancer/cmd/token"
 )
 
 func main() {
@@ -34,6 +35,7 @@ func main() {
 	r.POST("/account/register", handler.HandleRegister)
 	r.POST("/account/login", handler.HandleLogin)
 	r.POST("/account/logout", handler.HandleLogout)
+	r.POST("/refresh", token.TokenChange)
 
 	port := os.Getenv("PORT")
 	log.Fatal(r.Run(":" + port))
