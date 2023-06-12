@@ -15,8 +15,9 @@ func main() {
 
 	r := gin.Default()
 
-	config := cors.DefaultConfig()      // CORS Settings
-	config.AllowOrigins = []string{"*"} // All Domain Allwo Path
+	config := cors.DefaultConfig()                                                              // CORS Settings
+	config.AllowAllOrigins = true                                                               // All Domain Allwo Path
+	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"} // 허용할 헤더를 지정
 	r.Use(cors.New(config))
 
 	// Load env from .env file
@@ -32,6 +33,7 @@ func main() {
 	r.GET("/", HandleTest)
 	r.POST("/account/register", handler.HandleRegister)
 	r.POST("/account/login", handler.HandleLogin)
+	r.POST("/account/logout", handler.HandleLogout)
 
 	port := os.Getenv("PORT")
 	log.Fatal(r.Run(":" + port))

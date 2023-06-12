@@ -103,3 +103,19 @@ func HandleLogin(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"tokens": tokens})
 }
+
+func HandleLogout(c *gin.Context) {
+	token, claims, err := token.VerifyToken(c)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+		return
+	}
+
+	if !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": claims.User, "message": "Logged out successfully"})
+}

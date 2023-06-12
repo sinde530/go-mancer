@@ -1,9 +1,12 @@
 package token
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
 	"github.com/sinde530/go-mancer/model"
 )
 
@@ -55,4 +58,29 @@ func GenerateTokens(user *model.User) (*model.Tokens, error) {
 		AccessToken: ss,
 		// RefreshToken: ssRefresh,
 	}, nil
+}
+
+func VerifyToken(c *gin.Context) (*jwt.Token, *Claims, error) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return nil, nil, fmt.Errorf("authorization header is missing")
+	}
+
+	bearerToken := strings.Split(authHeader, " ")
+	if len(bearerToken) != 2 {
+		return nil, nil, fmt.Errorf("invalid token format")
+	}
+
+	tokenStr := bearerToken[1]
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return token, claims, nil
 }
