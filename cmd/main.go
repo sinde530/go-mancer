@@ -26,6 +26,7 @@ func main() {
 	config.AllowAllOrigins = true                                                               // All Domain Allwo Path
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"} // 허용할 헤더를 지정
 	r.Use(cors.New(config))
+	r.Static("/assets", "./assets")
 
 	// Load env from .env file
 	if gin.Mode() != gin.ReleaseMode {

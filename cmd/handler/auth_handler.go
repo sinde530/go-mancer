@@ -43,7 +43,7 @@ func HandleRegister(c *gin.Context) {
 	fmt.Println("CreateAT: ", user.CreateAT)
 
 	// Set default image
-	defaultImage := "assets/imgs/default-image.png"
+	defaultImage := "http://localhost:8080/assets/imgs/default-image.png"
 	user.Image = defaultImage
 
 	// err := db.SaveUser(&user)
