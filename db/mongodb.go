@@ -120,3 +120,33 @@ func SaveGroup(group *model.Group) error {
 	}
 	return nil
 }
+
+func SendGroups() ([]*model.Group, error) {
+	groups := []*model.Group{}
+
+	// Define options to sort the groups by a field (e.g., createdAt)
+	options := options.Find().SetSort(bson.D{{"createdAt", -1}})
+
+	// Find all groups in the database
+	cursor, err := GroupCollection.Find(context.Background(), bson.D{}, options)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+
+	// Iterate over the cursor and decode each group
+	for cursor.Next(context.Background()) {
+		var group model.Group
+		if err := cursor.Decode(&group); err != nil {
+			return nil, err
+		}
+		groups = append(groups, &group)
+	}
+
+	// Check if any error occurred during cursor iteration
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}

@@ -47,6 +47,7 @@ func main() {
 	r.GET("/iptrack/:ip", IPTrack)
 	r.POST("/create/group", handler.HandleCreateGroup)
 	r.POST("/upload-url", handler.HandleUploadURL)
+	r.GET("/send-groups", handler.HandleGetGroups)
 
 	port := os.Getenv("PORT")
 	log.Fatal(r.Run(":" + port))
