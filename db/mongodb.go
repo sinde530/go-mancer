@@ -17,7 +17,8 @@ import (
 )
 
 var Client *mongo.Client
-var Collection *mongo.Collection
+var UserCollection *mongo.Collection
+var GroupCollection *mongo.Collection
 
 func init() {
 	// Load env from .env file
@@ -50,12 +51,13 @@ func init() {
 	fmt.Println("Connected to MongoDB")
 
 	// get Collection
-	Collection = Client.Database("chattings").Collection("users")
+	UserCollection = Client.Database("chattings").Collection("users")
+	GroupCollection = Client.Database("chattings").Collection("groups")
 }
 
 func CheckUser(email string) error {
 	var result model.RegisterRequest
-	err := Collection.FindOne(context.Background(),
+	err := UserCollection.FindOne(context.Background(),
 		bson.M{"email": email}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -72,7 +74,7 @@ func SaveUser(request *model.User) error {
 		return err
 	}
 
-	_, err = Collection.InsertOne(context.Background(), request)
+	_, err = UserCollection.InsertOne(context.Background(), request)
 	if err != nil {
 		return err
 	}
@@ -81,7 +83,7 @@ func SaveUser(request *model.User) error {
 
 func GetUserByEmail(email string) (*model.User, error) {
 	var user model.User
-	err := Collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
+	err := UserCollection.FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
 
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -109,4 +111,12 @@ func AuthenticateUser(email, password string) (*model.User, error) {
 	}
 
 	return user, nil
+}
+
+func SaveGroup(group *model.Group) error {
+	_, err := GroupCollection.InsertOne(context.Background(), group)
+	if err != nil {
+		return err
+	}
+	return nil
 }

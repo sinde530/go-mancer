@@ -27,6 +27,7 @@ func main() {
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"} // 허용할 헤더를 지정
 	r.Use(cors.New(config))
 	r.Static("/assets", "./assets")
+	r.Static("/uploads", "./uploads")
 
 	// Load env from .env file
 	if gin.Mode() != gin.ReleaseMode {
@@ -44,6 +45,8 @@ func main() {
 	r.POST("/account/logout", handler.HandleLogout)
 	r.POST("/refresh", token.TokenChange)
 	r.GET("/iptrack/:ip", IPTrack)
+	r.POST("/create/group", handler.HandleCreateGroup)
+	r.POST("/upload-url", handler.HandleUploadURL)
 
 	port := os.Getenv("PORT")
 	log.Fatal(r.Run(":" + port))
