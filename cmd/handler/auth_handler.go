@@ -46,6 +46,8 @@ func HandleRegister(c *gin.Context) {
 	defaultImage := "http://localhost:8080/assets/imgs/default-image.png"
 	user.Image = defaultImage
 
+	user.Groups = []string{}
+
 	// err := db.SaveUser(&user)
 	err = db.SaveUser(&user)
 	if err != nil {

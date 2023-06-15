@@ -150,3 +150,15 @@ func SendGroups() ([]*model.Group, error) {
 
 	return groups, nil
 }
+
+func UpdateUser(user *model.User) error {
+	update := bson.M{
+		"$set": user,
+	}
+
+	_, err := UserCollection.UpdateOne(context.Background(), bson.M{"uid": user.UID}, update)
+	if err != nil {
+		return err
+	}
+	return nil
+}

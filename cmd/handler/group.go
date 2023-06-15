@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -34,17 +35,33 @@ func HandleCreateGroup(c *gin.Context) {
 
 	// 사용자 정보를 그룹 데이터에 추가
 	user := claims.User
-	group.CreatedByUID = user.UID
+
+	timestamp := strconv.FormatInt(time.Now().UnixNano(), 10)
+	// group.CreatedByUID = user.UID
+	group.CreatedByUID = user.UID + "-" + timestamp
 	group.CreatedByUsername = user.Username
 	group.ID = "" // You should generate the group ID here
 
-	group.Members = []string{}
+	group.Members = []string{user.Email}
 	group.CreatedAt = time.Now().Format("2006-01-02 15:04:05")
 	group.UpdatedAt = group.CreatedAt
 
 	err = db.SaveGroup(&group)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Failed to save group"})
+		return
+	}
+
+	userFromDB, err := db.GetUserByEmail(user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrive user"})
+		return
+	}
+
+	userFromDB.Groups = append(userFromDB.Groups, group.CreatedByUID)
+	err = db.UpdateUser(userFromDB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
 		return
 	}
 
