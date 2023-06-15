@@ -96,12 +96,60 @@ func generatePresignedURL(filename string) string {
 	return "http://localhost:8080/uploads/" + filename
 }
 
+// func HandleGetGroups(c *gin.Context) {
+// 	groups, err := db.SendGroups()
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve groups"})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, gin.H{"groups": groups})
+// }
+
 func HandleGetGroups(c *gin.Context) {
+	// 토큰에서 사용자 정보를 가져옴.
+	_, claims, err := token.VerifyToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid access token"})
+		return
+	}
+
+	user := claims.User
+
+	// 사용자의 이메일로 DB에서 사용자를 찾음.
+	userFromDB, err := db.GetUserByEmail(user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrive user"})
+		return
+	}
+
+	// 사용자가 속한 그룹의 ID를 가져옴.
+	userGroups := userFromDB.Groups
+
+	// DB에서 모든 그룹을 가져옴.
 	groups, err := db.SendGroups()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve groups"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"groups": groups})
+	// 사용자가 속한 그룹만 필터링.
+	var filteredGroups []*model.Group
+	for _, group := range groups {
+		if contains(userGroups, group.CreatedByUID) {
+			filteredGroups = append(filteredGroups, group)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"groups": filteredGroups})
+}
+
+// contains 함수는 주어진 문자열 슬라이스에 특정 문자열이 포함되어 있는지 확인.
+func contains(slice []string, str string) bool {
+	for _, v := range slice {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }
